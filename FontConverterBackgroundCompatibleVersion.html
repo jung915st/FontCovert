@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Text to Image Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            min-height: 200px;
+            margin-top: 20px;
+            background-color: white;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: start;
+            flex-wrap: wrap;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .control-group h3 {
+            margin: 0;
+            font-size: 1em;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-toggle {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            min-width: 150px;
+            text-align: left;
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            min-width: 150px;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid rgba(0,0,0,.15);
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 8px 20px;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            white-space: nowrap;
+            background-color: transparent;
+            border: 0;
+            cursor: pointer;
+        }
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        .font-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px;
+        }
+        #fontColor {
+            padding: 5px;
+            border: none;
+            width: 50px;
+            height: 30px;
+            cursor: pointer;
+        }
+        #fontSize {
+            padding: 5px;
+            width: 80px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .background-options {
+            margin-top: 10px;
+            display: none;
+        }
+        .background-options.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Font Text to Image Converter</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Font Settings</h3>
+                <input type="file" id="fontFile" accept=".ttf,.otf" />
+                <div class="font-controls">
+                    <label for="fontColor">Color:</label>
+                    <input type="color" id="fontColor" value="#000000" />
+                    <label for="fontSize">Size:</label>
+                    <input type="number" id="fontSize" value="36" min="8" max="120" />
+                    <span>px</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Background Settings</h3>
+                <div class="dropdown">
+                    <button type="button" class="dropdown-toggle" id="bgDropdown">
+                        Select Background
+                    </button>
+                    <div class="dropdown-menu" id="bgOptions">
+                        <button class="dropdown-item" data-value="none">無背景</button>
+                        <button class="dropdown-item" data-value="solid">純色背景</button>
+                        <button class="dropdown-item" data-value="paper">紙張紋理</button>
+                        <button class="dropdown-item" data-value="custom">上傳背景</button>
+                    </div>
+                </div>
+                
+                <div id="solidBgOptions" class="background-options">
+                    <label for="bgColor">Background Color:</label>
+                    <input type="color" id="bgColor" value="#ffffff" />
+                </div>
+                
+                <div id="customBgOptions" class="background-options">
+                    <input type="file" id="bgFile" accept="image/*" />
+                </div>
+            </div>
+        </div>
+
+        <textarea id="inputText" placeholder="Enter your text here...">請輸入文字...</textarea>
+
+        <div class="preview-container">
+            <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <button class="btn" id="downloadBtn">Download Image</button>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        const fontFile = document.getElementById('fontFile');
+        const bgFile = document.getElementById('bgFile');
+        const inputText = document.getElementById('inputText');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fontColor = document.getElementById('fontColor');
+        const fontSize = document.getElementById('fontSize');
+        const bgColor = document.getElementById('bgColor');
+        const bgDropdown = document.getElementById('bgDropdown');
+        const bgOptions = document.getElementById('bgOptions');
+        
+        let currentFont = null;
+        let fontFamily = 'CustomFont';
+        let currentBg = null;
+        let currentBgType = 'none';
+        
+        // Set initial canvas size
+        canvas.width = 600;
+        canvas.height = 400;
+        
+        // Initialize dropdown
+        bgDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+            bgOptions.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            bgOptions.classList.remove('show');
+        });
+        
+        // Handle background selection
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const value = this.dataset.value;
+                bgDropdown.textContent = this.textContent;
+                currentBgType = value;
+                
+                // Hide all background options
+                document.querySelectorAll('.background-options').forEach(opt => {
+                    opt.classList.remove('show');
+                });
+                
+                // Show relevant options
+                if (value === 'solid') {
+                    document.getElementById('solidBgOptions').classList.add('show');
+                } else if (value === 'custom') {
+                    document.getElementById('customBgOptions').classList.add('show');
+                }
+                
+                updatePreview();
+            });
+        });
+        
+        // Font upload handler
+        fontFile.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const font = new FontFace(fontFamily, arrayBuffer);
+                currentFont = await font.load();
+                document.fonts.add(currentFont);
+                updatePreview();
+            } catch (error) {
+                console.error('Error loading font:', error);
+                alert('Error loading font. Please try another font file.');
+            }
+        });
+        
+        // Background image upload handler
+        bgFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    currentBg = img;
+                    updatePreview();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Update preview when inputs change
+        [inputText, fontColor, fontSize, bgColor].forEach(input => {
+            input.addEventListener('input', updatePreview);
+        });
+        
+        // Download handler
+        downloadBtn.addEventListener('click', function() {
+            if (!currentFont) {
+                alert('Please upload a font file first.');
+                return;
+            }
+            
+            try {
+                const link = document.createElement('a');
+                link.download = 'text-image.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error('Error downloading:', error);
+                alert('Error creating download. Please try again.');
+            }
+        });
+        
+        function updatePreview() {
+            if (!currentFont) {
+                drawPlaceholder();
+                return;
+            }
+            
+            const text = inputText.value;
+            const size = parseInt(fontSize.value);
+            
+            // Set font to measure text
+            ctx.font = `${size}px ${fontFamily}`;
+            const metrics = ctx.measureText(text);
+            
+            // Calculate canvas size
+            canvas.width = Math.max(600, metrics.width + 80);
+            canvas.height = Math.max(400, size * 2);
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            if (currentBgType === 'solid') {
+                ctx.fillStyle = bgColor.value;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (currentBgType === 'custom' && currentBg) {
+                // Scale and center background image
+                const scale = Math.max(
+                    canvas.width / currentBg.width,
+                    canvas.height / currentBg.height
+                );
+                const w = currentBg.width * scale;
+                const h = currentBg.height * scale;
+                const x = (canvas.width - w) / 2;
+                const y = (canvas.height - h) / 2;
+                ctx.drawImage(currentBg, x, y, w, h);
+            } else {
+                // White background for 'none'
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Draw text
+            ctx.font = `${size}px ${fontFamily}`;
+            ctx.fillStyle = fontColor.value;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        }
+        
+        function drawPlaceholder() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#999';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Preview will appear here after uploading a font', 
+                canvas.width / 2, canvas.height / 2);
+        }
+        
+        // Initial placeholder
+        drawPlaceholder();
+    });
+    </script>
+</body>
+</html>

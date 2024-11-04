@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Text to Image Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            min-height: 200px;
+            margin-top: 20px;
+            background-color: white;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .font-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px;
+        }
+        #fontColor {
+            padding: 5px;
+            border: none;
+            width: 50px;
+            height: 30px;
+            cursor: pointer;
+        }
+        #fontSize {
+            padding: 5px;
+            width: 80px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .preview-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Font Text to Image Converter</h1>
+        
+        <div class="controls">
+            <input type="file" id="fontFile" accept=".ttf,.otf" />
+            <div class="font-controls">
+                <label for="fontColor">Color:</label>
+                <input type="color" id="fontColor" value="#000000" />
+                <label for="fontSize">Size:</label>
+                <input type="number" id="fontSize" value="36" min="8" max="120" />
+                <span>px</span>
+            </div>
+        </div>
+
+        <textarea id="inputText" placeholder="Enter your text here...">陌生又熟悉，你一定能讀懂。</textarea>
+
+        <div class="preview-container">
+            <div class="preview-label">Preview:</div>
+            <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <button class="btn" id="downloadBtn">Download Image</button>
+    </div>
+
+    <script>
+    class FontConverter {
+        constructor() {
+            this.canvas = document.getElementById('previewCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.fontFile = document.getElementById('fontFile');
+            this.inputText = document.getElementById('inputText');
+            this.downloadBtn = document.getElementById('downloadBtn');
+            this.fontColor = document.getElementById('fontColor');
+            this.fontSize = document.getElementById('fontSize');
+            
+            this.currentFont = null;
+            this.fontFamily = 'CustomFont';
+            
+            // Set initial canvas size
+            this.canvas.width = 600;
+            this.canvas.height = 200;
+            
+            this.initializeEventListeners();
+            this.drawPlaceholder(); // Draw initial placeholder
+        }
+
+        initializeEventListeners() {
+            this.fontFile.addEventListener('change', (e) => this.handleFontUpload(e));
+            this.inputText.addEventListener('input', () => this.updatePreview());
+            this.downloadBtn.addEventListener('click', () => this.downloadImage());
+            this.fontColor.addEventListener('change', () => this.updatePreview());
+            this.fontSize.addEventListener('input', () => this.updatePreview());
+        }
+
+        drawPlaceholder() {
+            // Clear canvas
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Draw placeholder text
+            this.ctx.fillStyle = '#999';
+            this.ctx.font = '16px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('Preview will appear here after uploading a font', 
+                this.canvas.width / 2, this.canvas.height / 2);
+        }
+
+        async handleFontUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const fontBuffer = await file.arrayBuffer();
+                const font = new FontFace(this.fontFamily, fontBuffer);
+                
+                // Load the font
+                await font.load();
+                
+                // Remove any previous instances of the font
+                document.fonts.delete(this.fontFamily);
+                
+                // Add the new font
+                document.fonts.add(font);
+                this.currentFont = font;
+                
+                this.updatePreview();
+            } catch (error) {
+                console.error('Error loading font:', error);
+                alert('Error loading font. Please try another font file.');
+            }
+        }
+
+        calculateTextDimensions(text, fontSize) {
+            this.ctx.font = `${fontSize}px ${this.fontFamily}`;
+            const metrics = this.ctx.measureText(text);
+            const height = fontSize * 1.5; // Approximate height with line height
+            return {
+                width: metrics.width + 40, // Add padding
+                height: height + 40 // Add padding
+            };
+        }
+
+        updatePreview() {
+            if (!this.currentFont) {
+                this.drawPlaceholder();
+                return;
+            }
+
+            const text = this.inputText.value || '';
+            const fontSize = parseInt(this.fontSize.value);
+            const color = this.fontColor.value;
+            
+            // Calculate required canvas size
+            const dimensions = this.calculateTextDimensions(text, fontSize);
+            this.canvas.width = Math.max(600, dimensions.width);
+            this.canvas.height = Math.max(200, dimensions.height);
+
+            // Clear canvas with white background
+            this.ctx.fillStyle = 'white';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw text
+            this.ctx.font = `${fontSize}px ${this.fontFamily}`;
+            this.ctx.fillStyle = color;
+            this.ctx.textBaseline = 'middle';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(text, this.canvas.width / 2, this.canvas.height / 2);
+        }
+
+        downloadImage() {
+            if (!this.currentFont) {
+                alert('Please upload a font file first.');
+                return;
+            }
+
+            try {
+                // Create a temporary canvas for the final image
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Set the temporary canvas size
+                tempCanvas.width = this.canvas.width;
+                tempCanvas.height = this.canvas.height;
+                
+                // Fill with white background
+                tempCtx.fillStyle = 'white';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Draw the original canvas content
+                tempCtx.drawImage(this.canvas, 0, 0);
+                
+                // Convert to data URL and trigger download
+                const dataUrl = tempCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'converted-text.png';
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error downloading image:', error);
+                alert('Error creating download. Please try again.');
+            }
+        }
+    }
+
+    // Initialize the converter when the page loads
+    window.addEventListener('DOMContentLoaded', () => {
+        new FontConverter();
+    });
+    </script>
+</body>
+</html>

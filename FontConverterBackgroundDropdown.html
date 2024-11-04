@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Text to Image Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            min-height: 200px;
+            margin-top: 20px;
+            background-color: white;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: start;
+            flex-wrap: wrap;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .control-group h3 {
+            margin: 0;
+            font-size: 1em;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-toggle {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            min-width: 150px;
+            text-align: left;
+        }
+        .dropdown-toggle:after {
+            content: '';
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+            border-top: 4px solid;
+            border-right: 4px solid transparent;
+            border-left: 4px solid transparent;
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            min-width: 150px;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid rgba(0,0,0,.15);
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 8px 20px;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            white-space: nowrap;
+            background-color: transparent;
+            border: 0;
+            cursor: pointer;
+        }
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-divider {
+            height: 0;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border-top: 1px solid #e9ecef;
+        }
+        .color-picker-container {
+            display: none;
+            margin-top: 10px;
+        }
+        .color-picker-container.show {
+            display: block;
+        }
+        #customBackgroundColor {
+            width: 50px;
+            height: 30px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+        }
+        .font-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Font Text to Image Converter</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Font Settings</h3>
+                <input type="file" id="fontFile" accept=".ttf,.otf" />
+                <div class="font-controls">
+                    <label for="fontColor">Color:</label>
+                    <input type="color" id="fontColor" value="#000000" />
+                    <label for="fontSize">Size:</label>
+                    <input type="number" id="fontSize" value="36" min="8" max="120" />
+                    <span>px</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Background Settings</h3>
+                <div class="dropdown">
+                    <button class="dropdown-toggle" id="backgroundDropdown">
+                        Select Background
+                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item" data-type="bg" data-value="none">無背景</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" data-type="bg" data-value="solid">純色背景</button>
+                        <button class="dropdown-item" data-type="bg" data-value="paper">紙張紋理</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" data-type="bg" data-value="mythical">神秘邊框</button>
+                        <button class="dropdown-item" data-type="bg" data-value="custom">上傳自訂背景</button>
+                    </div>
+                </div>
+                
+                <div id="colorPickerContainer" class="color-picker-container">
+                    <label for="customBackgroundColor">Background Color:</label>
+                    <input type="color" id="customBackgroundColor" value="#ffffff" />
+                </div>
+                
+                <div id="customBackgroundContainer" style="display: none;">
+                    <input type="file" id="backgroundFile" accept="image/*" />
+                </div>
+            </div>
+        </div>
+
+        <textarea id="inputText" placeholder="Enter your text here...">陌生又熟悉，你一定能讀懂。</textarea>
+
+        <div class="preview-container">
+            <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <button class="btn" id="downloadBtn">Download Image</button>
+    </div>
+
+    <script>
+    class FontConverter {
+        constructor() {
+            this.canvas = document.getElementById('previewCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.fontFile = document.getElementById('fontFile');
+            this.backgroundFile = document.getElementById('backgroundFile');
+            this.inputText = document.getElementById('inputText');
+            this.downloadBtn = document.getElementById('downloadBtn');
+            this.fontColor = document.getElementById('fontColor');
+            this.fontSize = document.getElementById('fontSize');
+            this.backgroundDropdown = document.getElementById('backgroundDropdown');
+            this.customBackgroundColor = document.getElementById('customBackgroundColor');
+            
+            this.currentFont = null;
+            this.fontFamily = 'CustomFont';
+            this.fontCounter = 0;
+            this.currentBackground = null;
+            this.currentBackgroundType = 'none';
+            
+            // Set initial canvas size
+            this.canvas.width = 600;
+            this.canvas.height = 400;
+            
+            // Background presets
+            this.backgroundPresets = {
+                mythical: 'https://d41chssnpqdne.cloudfront.net/user_upload_by_module/chat_bot/files/27472876/konnjwXZezmZzIyJ.png',
+                paper: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=' // Replace with actual paper texture
+            };
+            
+            this.initializeEventListeners();
+            this.drawPlaceholder();
+        }
+
+        initializeEventListeners() {
+            this.fontFile.addEventListener('change', (e) => this.handleFontUpload(e));
+            this.backgroundFile.addEventListener('change', (e) => this.handleBackgroundUpload(e));
+            this.inputText.addEventListener('input', () => this.updatePreview());
+            this.downloadBtn.addEventListener('click', () => this.downloadImage());
+            this.fontColor.addEventListener('change', () => this.updatePreview());
+            this.fontSize.addEventListener('input', () => this.updatePreview());
+            this.customBackgroundColor.addEventListener('change', () => this.updatePreview());
+
+            // Dropdown handling
+            document.addEventListener('click', (e) => {
+                if (!e.target.matches('.dropdown-toggle')) {
+                    const dropdowns = document.getElementsByClassName('dropdown-menu');
+                    Array.from(dropdowns).forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                }
+            });
+
+            this.backgroundDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dropdownMenu = e.target.nextElementSibling;
+                dropdownMenu.classList.toggle('show');
+            });
+
+            const dropdownItems = document.querySelectorAll('.dropdown-item');
+            dropdownItems.forEach(item => {
+                item.addEventListener('click', (e) => this.handleBackgroundSelection(e));
+            });
+        }
+
+        handleBackgroundSelection(e) {
+            const type = e.target.dataset.value;
+            this.currentBackgroundType = type;
+            this.backgroundDropdown.textContent = e.target.textContent;
+            
+            // Hide all additional option containers
+            document.getElementById('colorPickerContainer').classList.remove('show');
+            document.getElementById('customBackgroundContainer').style.display = 'none';
+            
+            switch(type) {
+                case 'none':
+                    this.currentBackground = null;
+                    break;
+                case 'solid':
+                    document.getElementById('colorPickerContainer').classList.add('show');
+                    break;
+                case 'custom':
+                    document.getElementById('customBackgroundContainer').style.display = 'block';
+                    break;
+                case 'mythical':
+                    this.loadPresetBackground(this.backgroundPresets.mythical);
+                    break;
+                case 'paper':
+                    this.loadPresetBackground(this.backgroundPresets.paper);
+                    break;
+            }
+            
+            this.updatePreview();
+        }
+
+        async loadPresetBackground(url) {
+            try {
+                const img = new Image();
+                img.src = url;
+                img.onload = () => {
+                    this.currentBackground = img;
+                    this.updatePreview();
+                };
+            } catch (error) {
+                console.error('Error loading preset background:', error);
+                alert('Error loading background. Please try again.');
+            }
+        }
+
+        handleBackgroundUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    this.currentBackground = img;
+                    this.updatePreview();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async handleFontUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                this.fontFamily = `CustomFont${this.fontCounter++}`;
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const font = new FontFace(this.fontFamily, e.target.result);
+                        this.currentFont = await font.load();
+                        document.fonts.add(this.currentFont);
+                        this.updatePreview();
+                    } catch (error) {
+                        console.error('Error loading font:', error);
+                        alert('Error loading font. Please try another font file.');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('Error reading font file:', error);
+                alert('Error reading font file. Please try again.');
+            }
+        }
+
+        drawPlaceholder() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.fillStyle = '#f0f0f0';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.fillStyle = '#999';
+            this.ctx.font = '16px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('Preview will appear here after uploading a font', 
+                this.canvas.width / 2, this.canvas.height / 2);
+        }
+
+        calculateTextDimensions(text, fontSize) {
+            this.ctx.font = `${fontSize}px ${this.fontFamily}`;
+            const metrics = this.ctx.measureText(text);
+            const height = fontSize * 1.5;
+            return {
+                width: metrics.width + 80,
+                height: height + 80
+            };
+        }
+
+        updatePreview() {
+            if (!this.currentFont) {
+                this.drawPlaceholder();
+                return;
+            }
+
+            const text = this.inputText.value || '';
+            const fontSize = parseInt(this.fontSize.value);
+            const color = this.fontColor.value;
+            
+            // Calculate required canvas size
+            const dimensions = this.calculateTextDimensions(text, fontSize);
+            this.canvas.width = Math.max(600, dimensions.width);
+            this.canvas.height = Math.max(400, dimensions.height);
+
+            // Clear canvas
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw background based on type
+            if (this.currentBackgroundType === 'solid') {
+                this.ctx.fillStyle = this.customBackgroundColor.value;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            } else if (this.currentBackground) {
+                // Scale and center the background image
+                const scale = Math.max(
+                    this.canvas.width / this.currentBackground.width,
+                    this.canvas.height / this.currentBackground.height
+                );
+                const scaledWidth = this.currentBackground.width * scale;
+                const scaledHeight = this.currentBackground.height * scale;
+                const x = (this.canvas.width - scaledWidth) / 2;
+                const y = (this.canvas.height - scaledHeight) / 2;
+                
+                this.ctx.drawImage(this.currentBackground, x, y, scaledWidth, scaledHeight);
+            } else {
+                // Default white background for 'none' option
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            // Draw text
+            this.ctx.font = `${fontSize}px ${this.fontFamily}`;
+            this.ctx.fillStyle = color;
+            this.ctx.textBaseline = 'middle';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(text, this.canvas.width / 2, this.canvas.height / 2);
+        }
+
+        downloadImage() {
+            if (!this.currentFont) {
+                alert('Please upload a font file first.');
+                return;
+            }
+
+            try {
+                const dataUrl = this.canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'converted-text.png';
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error downloading image:', error);
+                alert('Error creating download. Please try again.');
+            }
+        }
+    }
+
+    // Initialize the converter when the page loads
+    window.addEventListener('DOMContentLoaded', () => {
+        new FontConverter();
+    });
+    </script>
+</body>
+</html>
